@@ -272,6 +272,11 @@ export default function App() {
   const exportStandalone = () => {
     if (!svgContent || scenes.length === 0) return;
 
+    // Sanitize SVG for injection into template string
+    const sanitizedSvg = svgContent
+      .replace(/`/g, '\\`')
+      .replace(/\${/g, '\\${');
+
     const standaloneHtml = `
 <!DOCTYPE html>
 <html lang="en">
@@ -280,29 +285,31 @@ export default function App() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SVG Map Presentation</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #020617; font-family: sans-serif; }
-        #viewport { width: 100%; height: 100%; position: relative; }
-        #svg-container { position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); will-change: transform; transition-delay: 0.1s; }
-        #controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; align-items: center; background: rgba(15, 23, 42, 0.8); padding: 15px 25px; border-radius: 20px; border: 1px solid rgba(51, 65, 85, 0.5); backdrop-filter: blur(10px); z-index: 100; }
-        .btn { border: none; background: #6366f1; color: white; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-        .btn:hover { background: #4f46e5; transform: scale(1.1); }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #020617; font-family: system-ui, -apple-system, sans-serif; color: white; }
+        #viewport { width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center; }
+        #svg-container { position: absolute; top: 0; left: 0; transform-origin: 0 0; transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1); will-change: transform; }
+        #controls { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; align-items: center; background: rgba(15, 23, 42, 0.9); padding: 12px 24px; border-radius: 20px; border: 1px solid rgba(51, 65, 85, 0.5); backdrop-filter: blur(20px); z-index: 100; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .btn { border: none; background: #6366f1; color: white; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 20px; font-weight: bold; }
+        .btn:hover { background: #4f46e5; transform: scale(1.1); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
         .btn:active { transform: scale(0.9); }
-        #counter { color: #94a3b8; font-size: 12px; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase; min-width: 120px; text-align: center; }
-        #title-overlay { position: fixed; top: 30px; left: 30px; color: white; background: rgba(15, 23, 42, 0.8); padding: 10px 20px; border-radius: 12px; font-weight: bold; border: 1px solid rgba(51, 65, 85, 0.5); z-index: 50; }
+        #counter { color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; min-width: 140px; text-align: center; }
+        #title-overlay { position: fixed; top: 30px; left: 30px; background: rgba(15, 23, 42, 0.8); padding: 8px 16px; border-radius: 12px; font-size: 12px; font-weight: 900; letter-spacing: 0.1em; border: 1px solid rgba(51, 65, 85, 0.5); z-index: 50; color: #6366f1; text-transform: uppercase; }
+        .hint { position: fixed; bottom: 20px; right: 20px; font-size: 10px; color: #475569; letter-spacing: 0.1em; text-transform: uppercase; }
     </style>
 </head>
 <body>
     <div id="viewport">
         <div id="svg-container">
-            ${svgContent}
+            ${sanitizedSvg}
         </div>
     </div>
-    <div id="title-overlay">SVG Presentation Player</div>
+    <div id="title-overlay">Morph Engine Standalone</div>
     <div id="controls">
-        <button class="btn" onclick="prev()">←</button>
+        <button class="btn" onclick="prev()">&#8592;</button>
         <div id="counter">Scene 1 / ${scenes.length}</div>
-        <button class="btn" onclick="next()">→</button>
+        <button class="btn" onclick="next()">&#8594;</button>
     </div>
+    <div class="hint">Use Arrows or Space to navigate</div>
 
     <script>
         const scenes = ${JSON.stringify(scenes)};
@@ -312,8 +319,9 @@ export default function App() {
 
         function update() {
             const scene = scenes[currentIdx];
-            container.style.transform = \`translate(\${scene.viewState.x}px, \${scene.viewState.y}px) scale(\${scene.viewState.scale})\`;
-            counter.innerText = \`Scene \${currentIdx + 1} / \${scenes.length}\`;
+            const vs = scene.viewState;
+            container.style.transform = "translate(" + vs.x + "px, " + vs.y + "px) scale(" + vs.scale + ")";
+            counter.innerText = "Scene " + (currentIdx + 1) + " / " + scenes.length;
         }
 
         function next() {
@@ -334,9 +342,11 @@ export default function App() {
         window.onload = () => {
              const svg = container.querySelector('svg');
              if(svg) {
-                svg.style.width = '100%';
-                svg.style.height = '100%';
                 svg.style.overflow = 'visible';
+                svg.querySelectorAll('image').forEach(img => {
+                   img.style.display = 'block';
+                   img.setAttribute('visibility', 'visible');
+                });
              }
              update();
         };
@@ -457,7 +467,7 @@ export default function App() {
   }, [scenes, activeSceneIndex, mode, viewState]);
 
   return (
-    <div className="flex h-screen w-screen bg-[#020617] text-slate-100 overflow-hidden font-sans">
+    <div className="flex h-screen w-screen bg-[#020617] text-slate-100 overflow-hidden font-sans selection:bg-indigo-500/30">
       
       {/* Action Sidebar */}
       <aside className="w-16 border-r border-slate-800/50 flex flex-col items-center py-6 gap-6 bg-slate-950/80 backdrop-blur-md z-30">
